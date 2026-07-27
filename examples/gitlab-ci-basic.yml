@@ -1,0 +1,21 @@
+stages:
+  - detect-changes
+  - test
+
+paths-check:
+  stage: detect-changes
+  image: jbustos/filters-tool:v1.0.0
+  script:
+    - git diff --name-only $CI_MERGE_REQUEST_DIFF_BASE_SHA...$CI_COMMIT_SHA | python -m filters_tool --config examples/filters.yaml
+  artifacts:
+    reports:
+      dotenv: filters.env
+
+backend-tests:
+  stage: test
+  needs: ["paths-check"]
+  rules:
+    - if: '$backend == "true"'
+  script:
+    - echo "running backend tests"
+    - ./run-backend-tests.sh

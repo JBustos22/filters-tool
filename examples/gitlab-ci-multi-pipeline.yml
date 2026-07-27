@@ -1,0 +1,55 @@
+# Fuller example: a single paths-check job feeds four independent downstream
+# jobs, each gated on its own filter. A docs-only change, for instance, skips
+# backend/frontend/test jobs entirely instead of running the full suite.
+#
+# Assumes the filters-tool image is already published to Docker Hub --
+# see README.md for how to publish your own build instead.
+
+stages:
+  - detect-changes
+  - test
+
+paths-check:
+  stage: detect-changes
+  image: jbustos/filters-tool:v1.0.0
+  script:
+    - git diff --name-only $CI_MERGE_REQUEST_DIFF_BASE_SHA...$CI_COMMIT_SHA | python -m filters_tool --config examples/filters.yaml
+  artifacts:
+    reports:
+      dotenv: filters.env
+
+backend-tests:
+  stage: test
+  needs: ["paths-check"]
+  rules:
+    - if: '$backend == "true"'
+  script:
+    - echo "running backend tests"
+    - ./run-backend-tests.sh
+
+frontend-tests:
+  stage: test
+  needs: ["paths-check"]
+  rules:
+    - if: '$frontend == "true"'
+  script:
+    - echo "running frontend tests"
+    - ./run-frontend-tests.sh
+
+docs-build:
+  stage: test
+  needs: ["paths-check"]
+  rules:
+    - if: '$docs == "true"'
+  script:
+    - echo "building docs site"
+    - ./build-docs.sh
+
+unit-tests:
+  stage: test
+  needs: ["paths-check"]
+  rules:
+    - if: '$tests == "true"'
+  script:
+    - echo "running unit test suite"
+    - ./run-unit-tests.sh
