@@ -28,15 +28,16 @@ filters:
 ```
 
 Each top-level key under `filters:` is a filter name. Its value is a list of
-glob patterns, evaluated with gitignore-style semantics:
+glob patterns, using gitignore-style glob syntax:
 
 - `*` matches any characters within a single path segment.
 - `**` matches zero or more path segments.
 - A pattern prefixed with `!` is an **exclusion** pattern.
-- For a given changed file, the **last pattern in the list that matches it**
-  decides whether that file counts as included or excluded.
+- For a given changed file, that file counts as **included** if it matches
+  at least one inclusion pattern **and** does not match any exclusion
+  pattern in the list
 - A filter is considered **matched** (`true`) if at least one changed file
-  ends up included after applying its patterns in order.
+  ends up included.
 
 This means exclusion patterns only cancel inclusion for the *same file* —
 one file matching an exclude pattern does not prevent a different file from
