@@ -131,7 +131,3 @@ def main(argv: list | None = None) -> int:
         _print_verbose(results)
 
     return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
