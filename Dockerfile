@@ -11,7 +11,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 WORKDIR /build
 COPY pyproject.toml .
-COPY filters_tool ./filters_tool
+COPY src ./src
 RUN pip install --no-cache-dir .
 
 # ---- Final stage ----
