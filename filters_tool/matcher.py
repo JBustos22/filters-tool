@@ -3,10 +3,12 @@ Core filter-matching logic.
 
 A "filter" is a named list of glob patterns (gitignore-style), where a
 leading "!" marks an exclusion pattern. A filter matches the changed-file
-set if at least one changed file is "included" by the patterns -- i.e.
-the last pattern (in list order) that matches that file is an inclusion
-pattern, not an exclusion pattern. This mirrors standard gitignore
-semantics: later patterns override earlier ones on a per-file basis.
+set if at least one changed file is "included" by the patterns -- i.e. that
+file matches at least one inclusion pattern AND does not match any
+exclusion pattern. This is evaluated per file and is order-independent:
+unlike standard gitignore semantics, a later inclusion pattern cannot
+override an earlier exclusion pattern (or vice versa) for the same file --
+any exclusion match disqualifies the file outright.
 
 This module is deliberately independent of argparse/stdin/file I/O so it
 can be unit tested directly and reused by the CLI layer.
@@ -30,14 +32,14 @@ class FileTrace:
     hits: list = field(default_factory=list)  # list[PatternHit], in pattern order
 
     @property
-    def deciding_hit(self):
-        """The last matching pattern -- the one whose include/exclude wins."""
-        return self.hits[-1] if self.hits else None
-
-    @property
     def included(self) -> bool:
-        hit = self.deciding_hit
-        return hit is not None and hit.include
+        """
+        True if this file matches at least one inclusion pattern and no
+        exclusion pattern, regardless of the order those hits occurred in.
+        """
+        has_include = any(hit.include for hit in self.hits)
+        has_exclude = any(not hit.include for hit in self.hits)
+        return has_include and not has_exclude
 
 
 @dataclass
@@ -61,7 +63,8 @@ def _compile(patterns: list) -> pathspec.PathSpec:
 def trace_file(spec: pathspec.PathSpec, patterns: list, file_path: str) -> FileTrace:
     """
     Evaluate a single file against a compiled pattern spec, recording every
-    pattern that matched it (in order). The last hit determines the outcome.
+    pattern that matched it (in order). Whether any of those hits are an
+    exclusion, not their order, determines the outcome -- see FileTrace.included.
     """
     trace = FileTrace(path=file_path)
     for pattern_text, compiled in zip(patterns, spec.patterns):
@@ -77,9 +80,10 @@ def evaluate_filter(name: str, patterns: list, changed_files: list) -> FilterRes
     """
     Evaluate one named filter's patterns against the full list of changed files.
 
-    A filter matches if any changed file's deciding pattern is an inclusion.
-    Files with no pattern interaction at all are omitted from file_traces to
-    keep --explain output focused on files that were actually relevant.
+    A filter matches if any changed file matches an inclusion pattern and no
+    exclusion pattern. Files with no pattern interaction at all are omitted
+    from file_traces to keep --explain output focused on files that were
+    actually relevant.
     """
     if not patterns:
         return FilterResult(name=name, matched=False, matched_by=None, file_traces=[])
