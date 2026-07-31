@@ -65,19 +65,29 @@ and host your own instead of using a pre-built one).
 A minimal example — see [`examples/gitlab-ci-basic.yml`](examples/gitlab-ci-basic.yml):
 
 ```yaml
+stages:
+  - detect-changes
+  - test
+
 paths-check:
-  image: jbustos/filter-tool:v1.0.0
+  stage: detect-changes
+  image: jbustos/filters-tool:v1.0.0
   script:
-    - git diff --name-only $CI_MERGE_REQUEST_DIFF_BASE_SHA...$CI_COMMIT_SHA | python -m filters_tool --config filters.yaml
+    - git diff --name-only $CI_MERGE_REQUEST_DIFF_BASE_SHA...$CI_COMMIT_SHA | python -m filters_tool --config examples/filters.yaml
+    # Equivalent alternative using --changed-files-file instead of stdin:
+    # - git diff --name-only $CI_MERGE_REQUEST_DIFF_BASE_SHA...$CI_COMMIT_SHA > changed_files.txt
+    # - python -m filters_tool --config examples/filters.yaml --changed-files-file changed_files.txt
   artifacts:
     reports:
       dotenv: filters.env
 
 backend-tests:
+  stage: test
   needs: ["paths-check"]
   rules:
     - if: '$backend == "true"'
   script:
+    - echo "running backend tests"
     - ./run-backend-tests.sh
 ```
 
