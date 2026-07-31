@@ -1,28 +1,29 @@
 # ---- Builder stage ----
-# Installs pure-Python dependencies into an isolated directory. No compiler
+# Installs the package (and its pure-Python deps) into a venv. No compiler
 # toolchain is needed since pathspec and PyYAML have no C-extension deps
-# for this use case.
+# for this use case. Using a venv (rather than `pip install --target`)
+# ensures the `filters-tool` console-script entry point actually gets
+# generated, not just the importable package.
 FROM python:3.12-slim AS builder
 
-WORKDIR /build
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir --target=/build/deps -r requirements.txt
+WORKDIR /build
+COPY pyproject.toml .
+COPY src ./src
+RUN pip install --no-cache-dir .
 
 # ---- Final stage ----
-# Only the installed dependencies and application source are copied in --
-# no pip, no build cache, no compiler toolchain left behind.
+# Only the venv (deps + package + the filters-tool script) is copied in --
+# no pip, no build cache, no compiler toolchain left behind. GitLab CI's
+# docker executor overrides ENTRYPOINT and runs `script:` steps from the
+# cloned-repo directory, so having `filters-tool` on PATH (rather than
+# relying on cwd-relative imports) is what makes it resolve regardless of
+# the caller's working directory.
 FROM python:3.12-slim
 
-WORKDIR /app
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
-COPY --from=builder /build/deps /usr/local/lib/python3.12/site-packages
-COPY filters_tool ./filters_tool
-
-# GitLab CI's docker executor overrides ENTRYPOINT and runs `script:` steps
-# from the cloned-repo directory, not this image's WORKDIR -- so PYTHONPATH
-# is set here to make `python -m filters_tool` resolve regardless of the
-# caller's working directory or entrypoint behavior.
-ENV PYTHONPATH=/app
-
-ENTRYPOINT ["python", "-m", "filters_tool"]
+ENTRYPOINT ["filters-tool"]

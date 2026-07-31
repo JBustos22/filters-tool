@@ -6,7 +6,10 @@ paths-check:
   stage: detect-changes
   image: jbustos/filters-tool:v1.0.0
   script:
-    - git diff --name-only $CI_MERGE_REQUEST_DIFF_BASE_SHA...$CI_COMMIT_SHA | python -m filters_tool --config examples/filters.yaml
+    - git diff --name-only $CI_MERGE_REQUEST_DIFF_BASE_SHA...$CI_COMMIT_SHA | filters-tool --config examples/filters.yaml
+    # Equivalent alternative using --changed-files-file instead of stdin:
+    # - git diff --name-only $CI_MERGE_REQUEST_DIFF_BASE_SHA...$CI_COMMIT_SHA > changed_files.txt
+    # - filters-tool --config examples/filters.yaml --changed-files-file changed_files.txt
   artifacts:
     reports:
       dotenv: filters.env

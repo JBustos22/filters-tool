@@ -69,7 +69,7 @@ def test_empty_changed_files_all_false():
     assert results == {"backend": False, "docs": False}
 
 
-def test_trace_records_deciding_pattern_order():
+def test_trace_records_hit_order():
     result = evaluate_filter(
         "kotlin_sources",
         ["**/*.kt", "!**/test/**"],
@@ -77,4 +77,20 @@ def test_trace_records_deciding_pattern_order():
     )
     trace = result.file_traces[0]
     assert [h.pattern_text for h in trace.hits] == ["**/*.kt", "!**/test/**"]
-    assert trace.included is False  # last hit is the exclusion
+    assert trace.included is False  # matches an exclusion, so disqualified
+
+
+def test_exclusion_before_inclusion_still_excludes():
+    """
+    Matching is order-independent: a file matching both an inclusion and an
+    exclusion pattern is excluded regardless of which pattern appears first
+    in the list.
+    """
+    result = evaluate_filter(
+        "backend",
+        ["!app/tests/**", "app/**/*.py"],
+        ["app/tests/test_main.py"],
+    )
+    trace = result.file_traces[0]
+    assert trace.included is False
+    assert result.matched is False

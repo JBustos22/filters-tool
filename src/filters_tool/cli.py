@@ -2,7 +2,7 @@
 Command-line entry point for the filters tool.
 
 Usage (typical, in GitLab CI):
-    git diff --name-only $CI_MERGE_REQUEST_DIFF_BASE_SHA... | python -m filters_tool --config filters.yaml
+    git diff --name-only $CI_MERGE_REQUEST_DIFF_BASE_SHA... | filters-tool --config filters.yaml
 
 Exit codes:
     0 - successful run (regardless of whether any individual filter matched)
@@ -131,7 +131,3 @@ def main(argv: list | None = None) -> int:
         _print_verbose(results)
 
     return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())

@@ -28,15 +28,16 @@ filters:
 ```
 
 Each top-level key under `filters:` is a filter name. Its value is a list of
-glob patterns, evaluated with gitignore-style semantics:
+glob patterns, using gitignore-style glob syntax:
 
 - `*` matches any characters within a single path segment.
 - `**` matches zero or more path segments.
 - A pattern prefixed with `!` is an **exclusion** pattern.
-- For a given changed file, the **last pattern in the list that matches it**
-  decides whether that file counts as included or excluded.
+- For a given changed file, that file counts as **included** if it matches
+  at least one inclusion pattern **and** does not match any exclusion
+  pattern in the list
 - A filter is considered **matched** (`true`) if at least one changed file
-  ends up included after applying its patterns in order.
+  ends up included.
 
 This means exclusion patterns only cancel inclusion for the *same file* —
 one file matching an exclude pattern does not prevent a different file from
@@ -64,19 +65,29 @@ and host your own instead of using a pre-built one).
 A minimal example — see [`examples/gitlab-ci-basic.yml`](examples/gitlab-ci-basic.yml):
 
 ```yaml
+stages:
+  - detect-changes
+  - test
+
 paths-check:
-  image: jbustos/filter-tool:v1.0.0
+  stage: detect-changes
+  image: jbustos/filters-tool:v1.0.0
   script:
-    - git diff --name-only $CI_MERGE_REQUEST_DIFF_BASE_SHA...$CI_COMMIT_SHA | python -m filters_tool --config filters.yaml
+    - git diff --name-only $CI_MERGE_REQUEST_DIFF_BASE_SHA...$CI_COMMIT_SHA | filters-tool --config examples/filters.yaml
+    # Equivalent alternative using --changed-files-file instead of stdin:
+    # - git diff --name-only $CI_MERGE_REQUEST_DIFF_BASE_SHA...$CI_COMMIT_SHA > changed_files.txt
+    # - filters-tool --config examples/filters.yaml --changed-files-file changed_files.txt
   artifacts:
     reports:
       dotenv: filters.env
 
 backend-tests:
+  stage: test
   needs: ["paths-check"]
   rules:
     - if: '$backend == "true"'
   script:
+    - echo "running backend tests"
     - ./run-backend-tests.sh
 ```
 
@@ -189,6 +200,6 @@ documentation=true
 ## Running the tests
 
 ```bash
-pip install -r requirements.txt pytest
+pip install -e . pytest
 pytest
 ```
