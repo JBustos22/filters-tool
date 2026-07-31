@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "filters-tool"
+version = "1.0.0"
+description = "Path-based filter evaluation for GitLab CI pipelines"
+requires-python = ">=3.10"
+dependencies = [
+    "pathspec>=0.12,<1.0",
+    "PyYAML>=6.0,<7.0",
+]
+
+[project.scripts]
+filters-tool = "filters_tool.cli:main"
+
+[tool.setuptools]
+packages = ["filters_tool"]
