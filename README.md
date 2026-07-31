@@ -200,6 +200,6 @@ documentation=true
 ## Running the tests
 
 ```bash
-pip install -r requirements.txt pytest
+pip install -e . pytest
 pytest
 ```
